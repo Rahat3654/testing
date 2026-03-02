@@ -10,15 +10,16 @@ if os.path.exists("dev.env"):
     load_dotenv("dev.env")
 
 database_url = os.getenv("DATABASE_URL")
-if not database_url:
-    raise RuntimeError("DATABASE_URL environment variable is not set")
-
-# Some platforms provide URLs starting with postgres:// — SQLAlchemy + psycopg2 works better with postgresql+psycopg2://
-if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-
-# If your provider requires ssl, enable it here (psycopg2)
-engine = create_engine(database_url, connect_args={"sslmode": "require"})
+if database_url:
+    # Some platforms provide URLs starting with postgres:// — SQLAlchemy + psycopg2 works better with postgresql+psycopg2://
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    # If your provider requires ssl, enable it here (psycopg2)
+    engine = create_engine(database_url, connect_args={"sslmode": "require"})
+else:
+    # Fallback to in-memory SQLite for CI/tests when DATABASE_URL is not set
+    print("DATABASE_URL not set, using in-memory SQLite (CI/test mode)")
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

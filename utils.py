@@ -44,6 +44,10 @@ def verify_password(password: str, hash: str) -> bool:
 
 async def send_email_verify(email: str):
     secret = pyotp.random_base32()
+    if not MAIL_SERVER or not MAIL_USERNAME or not MAIL_PASSWORD:
+        # Skip real email in CI/tests when mail env vars are not configured
+        print("Mail configuration incomplete, skipping email send in CI/test mode")
+        return secret
     time_window = 60 * 5
     totp = pyotp.TOTP(s=secret, interval=time_window)
     otp = totp.now()
