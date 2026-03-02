@@ -3,7 +3,7 @@ import uvicorn
 import database
 import pyotp
 from models import Users, UserLoginModel, UserResponse
-from database import engine, sessionLocal, User
+from database import engine, SessionLocal, User
 from mail import mail, create_message
 from utils import create_access_token, decode_token, get_user_by_email, user_exists, create_user, send_email_verify, verify_password
 from errors import UserAlreadyExists, InvalidCredentials
@@ -21,7 +21,7 @@ routes = FastAPI()
 database.Base.metadata.create_all(bind=engine)
 
 async def get_db() -> Session:
-    db = sessionLocal()
+    db = SessionLocal()
     try:
         yield db
     finally:

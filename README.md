@@ -47,9 +47,22 @@ Ensure you have the following installed:
     ```
 
 
-## Running the Application
-Start the application:
-    ```bash
-    uvicorn routes:main --reload
-    ```
+## CI / Environment Variables
+
+When running in CI or tests without a real database or mail server, the application falls back to safe stubs automatically:
+
+- **Database**: If `DATABASE_URL` is not set, an in-memory SQLite database is used instead of PostgreSQL.
+- **Email**: If `MAIL_SERVER`, `MAIL_USERNAME`, or `MAIL_PASSWORD` are not set, email sending is skipped and a secret is returned directly (no SMTP connection is made).
+
+To use a real database and mail server, provide the following environment variables (see `.env.example`):
+
+```
+DATABASE_URL=postgresql+psycopg2://user:password@host/dbname
+MAIL_SERVER=smtp.example.com
+MAIL_USERNAME=user@example.com
+MAIL_PASSWORD=secret
+MAIL_PORT=587
+MAIL_FROM_EMAIL=user@example.com
+```
+
 
