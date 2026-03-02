@@ -9,9 +9,9 @@ mail_config = ConnectionConfig(
     MAIL_USERNAME= str(os.getenv('MAIL_USERNAME')),
     MAIL_PASSWORD=str(os.getenv('MAIL_PASSWORD')),
     MAIL_SERVER=str(os.getenv('MAIL_SERVER')),
-    MAIL_PORT=587,
-    MAIL_FROM="mohanraj.balajiv@gmail.com",
-    MAIL_FROM_NAME="MohanrajB",
+    MAIL_PORT=str(os.getenv('MAIL_PORT')),
+    MAIL_FROM=str(os.getenv('MAIL_FORM')),
+    MAIL_FROM_NAME="pentaridex",
       MAIL_STARTTLS=True,
       MAIL_SSL_TLS=False,
 )
