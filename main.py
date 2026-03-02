@@ -27,6 +27,17 @@ async def get_db() -> Session:
     finally:
         db.close()
 
+from fastapi.responses import FileResponse
+import os
+
+# Serve index.html from the repository root
+@routes.get("/")
+async def root():
+    # Determine file path relative to this file to be safe in deployed working dirs
+    here = os.path.dirname(__file__)
+    index_path = os.path.join(here, "index.html")
+    return FileResponse(index_path, media_type="text/html")
+
 
 @routes.post("/send_mail")
 async def send_mail(email: str):
