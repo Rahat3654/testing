@@ -8,44 +8,37 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
-from database import Profile, engine, sessionLocal, User
+from database import Profile, SessionLocal, User
 from models import Users
 
-load_dotenv('dev.env')
-passwd_context = CryptContext(schemes=["bcrypt"])
+# load local dev.env only if present
+if os.path.exists("dev.env"):
+    load_dotenv("dev.env")
 
+passwd_context = CryptContext(schemes=["bcrypt"])
 ACCESS_TOKEN_EXPIRY = 3600
 
-MAIL_USERNAME= os.getenv('MAIL_USERNAME')
-MAIL_PASSWORD=os.getenv('MAIL_PASSWORD')
-MAIL_SERVER=str(os.getenv('MAIL_SERVER'))
-MAIL_PORT=int(587)
-MAIL_FROM=os.getenv('MAIL_FROM_EMAIL')
-MAIL_FROM_NAME="MohanrajB"
-JWT_SECRET=os.getenv('JWT_SECRET')
-JWT_ALGORITHM=os.getenv('JWT_ALGO')
+MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+MAIL_SERVER = os.getenv("MAIL_SERVER")
+MAIL_PORT = int(os.getenv("MAIL_PORT") or 587)
+MAIL_FROM = os.getenv("MAIL_FROM_EMAIL") or os.getenv("MAIL_FROM")
+MAIL_FROM_NAME = "pentaridex"
+JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_ALGORITHM = os.getenv("JWT_ALGO")
 
 blacklist = set()
 
 def generate_passwd_hash(password: str) -> str:
-    hash = passwd_context.hash(password)
+    return passwd_context.hash(password)
 
-    return hash
+async def user_exists(email: str, session: Session) -> bool:
+    # Use a DB filter instead of iterating all users
+    return session.query(User).filter(User.email == email).first() is not None
 
-async def user_exists(email, session: Session):
-    users = session.query(User).all()
-    for user in users:
-        if user.email == email:
-            return True
-        return False
+async def get_user_by_email(email: str, session: Session):
+    return session.query(User).filter(User.email == email).first()
 
-async def get_user_by_email(email, session: Session):
-    users = session.query(User).all()
-    for user in users:
-        if email == user.email:
-            return user
-    return None
-    
 def verify_password(password: str, hash: str) -> bool:
     return passwd_context.verify(password, hash)
 
@@ -55,77 +48,16 @@ async def send_email_verify(email: str):
     totp = pyotp.TOTP(s=secret, interval=time_window)
     otp = totp.now()
     try:
-        with smtplib.SMTP(MAIL_SERVER[0], port=587) as connection:
+        with smtplib.SMTP(MAIL_SERVER, port=MAIL_PORT) as connection:
             connection.starttls()
-            connection.login(
-                user=MAIL_FROM[0],
-                password=MAIL_PASSWORD[0],
-            )
+            connection.login(user=MAIL_USERNAME, password=MAIL_PASSWORD)
             connection.sendmail(
-                from_addr=MAIL_FROM[0],
+                from_addr=MAIL_FROM,
                 to_addrs=email,
-                msg=f"Subject:Email Verification OTP\n\nYour OTP for email verification in Trade Replicator is: {otp}",
+                msg=f"Subject:Email Verification OTP\n\nYour OTP for email verification is: {otp}",
             )
-        print(
-            "Please check your email for the OTP to complete your registration.",
-        )
+        print("Please check your email for the OTP to complete your registration.")
         return secret
     except Exception as e:
-        print("Exception occured while sending email")
-
-async def create_user(user: Users, session: Session, secret: str):
-        user_data = User(
-            Username=user.Username,
-            Name=user.Name,
-            email=user.email,
-            dob=user.dob,
-            Address=user.Address
-        )
-        user_data.Password = generate_passwd_hash(user.Password)
-        profile = Profile(secret=secret)
-        user_data.profile = profile
-        session.add(user_data)
-        session.commit()
-        return user_data
-
-def create_access_token(
-    user_data: dict, expiry: timedelta = None, refresh: bool = False
-):
-    payload = {}
-
-    payload["user"] = user_data
-    payload["exp"] = datetime.now() + (
-        expiry if expiry is not None else timedelta(seconds=ACCESS_TOKEN_EXPIRY)
-    )
-    payload["jti"] = str(uuid.uuid4())
-
-    payload["refresh"] = refresh
-
-    token = jwt.encode(
-        payload=payload, key=JWT_SECRET, algorithm=JWT_ALGORITHM
-    )
-
-    return token
-
-
-def decode_token(token: str) -> dict:
-    try:
-        token_data = jwt.decode(
-            jwt=token, key=JWT_SECRET, algorithms=[JWT_ALGORITHM]
-        )
-        blacklist.add(token_data['jti'])
-
-        return token_data
-
-    except jwt.PyJWTError as e:
-        print("Exception while decoding the token")
+        print("Exception occurred while sending email:", e)
         return None
-
-def is_token_blacklisted(token):
-    try:
-        token_data = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return token_data['jti'] in blacklist
-    except jwt.ExpiredSignatureError:
-        return True  
-    except jwt.InvalidTokenError:
-        return True
