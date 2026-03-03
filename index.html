@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Auth - Register / Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 720px; margin: 2rem auto; padding: 1rem; }
+    .card { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; border-radius: 6px; }
+    label { display:block; margin: .5rem 0; }
+    input { width:100%; padding:.5rem; box-sizing: border-box; }
+    button { padding:.6rem 1rem; margin-top:.5rem; }
+    pre { background:#f6f8fa; padding: .5rem; border-radius:4px; white-space:pre-wrap; word-wrap:break-word; }
+  </style>
+</head>
+<body>
+  <h1>Authentication</h1>
+
+  <div class="card">
+    <h2>Register</h2>
+    <form id="registerForm">
+      <label>Username: <input name="Username" required></label>
+      <label>Password: <input name="Password" type="password" required></label>
+      <label>Name: <input name="Name" required></label>
+      <label>Email: <input name="email" type="email" required></label>
+      <label>DOB: <input name="dob" type="date" required></label>
+      <label>Address: <input name="Address"></label>
+      <button type="submit">Sign up</button>
+    </form>
+    <div><strong>Response:</strong><pre id="regResp">-</pre></div>
+  </div>
+
+  <div class="card">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label>Email: <input name="email" type="email" required></label>
+      <label>Password: <input name="password" type="password" required></label>
+      <button type="submit">Login</button>
+    </form>
+    <div><strong>Response:</strong><pre id="loginResp">-</pre></div>
+  </div>
+
+  <div class="card">
+    <h2>Verify Email OTP</h2>
+    <form id="verifyForm">
+      <label>Email: <input name="email" type="email" required></label>
+      <label>OTP: <input name="otp" required></label>
+      <button type="submit">Verify</button>
+    </form>
+    <div><strong>Response:</strong><pre id="verifyResp">-</pre></div>
+  </div>
+
+  <script>
+    // Helper to POST JSON and display result
+    async function postJson(path, data, targetPre) {
+      try {
+        const res = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json().catch(() => ({ status: res.status, text: 'No JSON' }));
+        document.getElementById(targetPre).textContent = JSON.stringify(json, null, 2);
+        return json;
+      } catch (err) {
+        document.getElementById(targetPre).textContent = 'Network error: ' + err;
+        return null;
+      }
+    }
+
+    // Register
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      await postJson('/signup', data, 'regResp');
+    });
+
+    // Login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      const result = await postJson('/login', data, 'loginResp');
+      if (result && result.access_token) {
+        localStorage.setItem('access_token', result.access_token);
+        localStorage.setItem('refresh_token', result.refresh_token || '');
+      }
+    });
+
+    // Verify OTP (calls the REST path expecting email and OTP)
+    document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = Object.fromEntries(new FormData(e.target).entries());
+      const path = `/verify_mail/${encodeURIComponent(form.email)}/${encodeURIComponent(form.otp)}`;
+      try {
+        const res = await fetch(path, { method: 'POST' });
+        const json = await res.json().catch(() => ({ status: res.status, text: 'No JSON' }));
+        document.getElementById('verifyResp').textContent = JSON.stringify(json, null, 2);
+      } catch (err) {
+        document.getElementById('verifyResp').textContent = 'Network error: ' + err;
+      }
+    });
+  </script>
+</body>
+</html>
